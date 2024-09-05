@@ -4,5 +4,5 @@ from django.urls import include, path
 from . import views
 
 urlpatterns = [
-    path("", views.phishing, name="phishing"),
+    path("<slug:slug>/", views.phishing, name="phishing"),
 ]

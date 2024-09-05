@@ -1,8 +1,8 @@
 from django.shortcuts import render
 
 
-def phishing(request):
+def phishing(request, slug):
     context = {
-        "slug": None,
+        "phishing_nav_active": True,
     }
-    return render(request, "phishing/index.html", context)
+    return render(request, "phishing.html", context)
