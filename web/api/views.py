@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from packaging import version
 from django.template.defaultfilters import slugify
-from rest_framework import viewsets
+from rest_framework import viewsets, generics, response
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -2809,3 +2809,18 @@ class VulnerabilityViewSet(viewsets.ModelViewSet):
 					print(e)
 
 		return qs
+
+import random
+from reNgine import  settings
+
+class PhishingDetection(generics.CreateAPIView):
+
+    def create(self, request, *args, **kwargs):
+        
+        return response.Response(
+            {
+                "is_phishing": True,
+                "predict": random.uniform(0, 1),
+                "data": request.data,
+            }
+        )

@@ -23,7 +23,7 @@ Phishing Detection
 			<div class="search-input" id="phishing-search-input">
 				<a href="" target="_blank" hidden></a>
 				<div class="input-group">
-					<input type="text" class="form-control" placeholder="Domain or IP" aria-label="Check your website" id="phishing-input">
+					<input type="text" class="form-control" placeholder="http:// or https://" aria-label="Check your website" id="phishing-input">
 					<div class="input-group-append">
 						<button id="phishing-search-button" class="btn btn-primary" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Check</button>
 					</div>
@@ -31,6 +31,11 @@ Phishing Detection
 				<div class="autocom-box mt-container mx-auto vulnerability-search" id="autocom-box">
 				</div>
 			</div>
+		</div>
+		<div class="message-notification-wrapper">
+			<div id="safe" class="text-success h3"></div>
+			<div id="warning" class="text-warning h3"></div>
+			<div id="error" class="text-danger h3"></div>
 		</div>
 	</div>
 </div>
@@ -41,12 +46,70 @@ Phishing Detection
 	$(document).ready(function() {
 		web_input = $('#phishing-input')
 		search_button = $('#phishing-search-button')
+		safe = $("#safe")
+		warning = $("#warning")
+		error = $("#error")
+
+		function validate_url(url) {
+			try {
+				url = url.trim()
+				if (!url) {
+					return [null, Error("Domain or IP must not be empty")]
+				}
+				url = new URL(url)
+				return [url, null] 
+			} catch (e) {
+				return [null, Error("Invalid URL")]
+			}
+		}
+
+		function clear() {
+			safe.text(null)
+			warning.text(null)
+			error.text(null)
+		}
 	
 		function on_search(input_search) {
-			console.log('search', input_search);
-			if (input_search.trim()) {
+			clear()
+
+			const [url_object, e] = validate_url(input_search)
+
+			if (e) {
+				error.text(e.toString())
 				return
 			}
+
+			fetch('/api/phishing/predict/', {
+				method: "POST",
+				credentials: "same-origin",
+				body: JSON.stringify({
+					search: {
+						domain: url_object.host,
+						origin: url_object.href,
+					},
+				}),
+				headers: {
+					"X-CSRFToken": getCookie("csrftoken"),
+					"Content-Type": 'application/json',
+				}
+			}).then(res => res.json())
+			.then(data => {
+				const isPhishing = data?.is_phishing
+				const predict_result = data?.predict
+
+				if (isPhishing == undefined){
+					error.text("Unknown website")
+					return
+				}
+
+				if(!isPhishing){
+					safe.text("This website is not a phishing website")
+					return
+				}
+				
+				console.log(data.data)
+				warning.text(`This website is considered a phishing website (${predict_result * 100}%)`)
+			})
 		}
 	
 		web_input.on('keypress', function(event) {

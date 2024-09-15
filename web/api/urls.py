@@ -239,6 +239,7 @@ urlpatterns = [
         'action/create/project',
         CreateProjectApi.as_view(),
         name='create_project'),
+        path("phishing/predict/", PhishingDetection.as_view()),
 ]
 
 urlpatterns += router.urls
