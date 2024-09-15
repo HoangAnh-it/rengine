@@ -260,3 +260,6 @@ LOGGING = {
         "reNgine.tasks": {"handlers": ["task"], "level": "DEBUG" if DEBUG else "INFO", "propagate": False},
     },
 }
+
+HUGGING_FACE_API_KEY = env("HUGGING_FACE_API_KEY")
+HUGGING_FACE_MODEL = env("HUGGING_FACE_MODEL")

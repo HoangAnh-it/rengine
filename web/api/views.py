@@ -2812,15 +2812,29 @@ class VulnerabilityViewSet(viewsets.ModelViewSet):
 
 import random
 from reNgine import  settings
+from .utils import *
+import requests
+import numpy as np
 
 class PhishingDetection(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
+        body = request.data
+        url = body.get('search').get('origin')
+        print(f"🚀🚀🚀 Checking {url}")
+        html_res = requests.get(url)
+        if html_res.status_code != 200:
+            return response.Response({"error": "Unknown website"}, status=400)
         
+        html = html_res.text
+        data = preprocess_input(url, html)
+        result = predict(data)
+        benign, phishing = np.array(result).flatten().tolist()
+
         return response.Response(
             {
-                "is_phishing": True,
-                "predict": random.uniform(0, 1),
-                "data": request.data,
+                "benign": benign,
+                "phishing": phishing,
+                "threshold": 0.5,
             }
         )

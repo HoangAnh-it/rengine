@@ -68,8 +68,19 @@ Phishing Detection
 			warning.text(null)
 			error.text(null)
 		}
+
+		function on_search(input, func) {
+			swal.fire({
+				title:"Checking phishing website",
+				text: `Please wait while we're checking website: ${input}`,
+				padding: '2em',
+				onOpen: function() {
+					do_search(input)
+				}
+			})
+		}
 	
-		function on_search(input_search) {
+		function do_search(input_search) {
 			clear()
 
 			const [url_object, e] = validate_url(input_search)
@@ -78,7 +89,8 @@ Phishing Detection
 				error.text(e.toString())
 				return
 			}
-
+			
+			swal.showLoading()
 			fetch('/api/phishing/predict/', {
 				method: "POST",
 				credentials: "same-origin",
@@ -94,21 +106,28 @@ Phishing Detection
 				}
 			}).then(res => res.json())
 			.then(data => {
-				const isPhishing = data?.is_phishing
-				const predict_result = data?.predict
+				swal.close();
+				benign = data?.benign
+				phishing = data?.phishing
+				threshold = data?.threshold
 
-				if (isPhishing == undefined){
+				if (!benign || !phishing){
 					error.text("Unknown website")
 					return
 				}
 
-				if(!isPhishing){
+				if(phishing < threshold){
 					safe.text("This website is not a phishing website")
 					return
 				}
 				
 				console.log(data.data)
-				warning.text(`This website is considered a phishing website (${predict_result * 100}%)`)
+				warning.text(`This website is considered a phishing website (${Math.ceil(phishing * 100)}%)`)
+			})
+			.catch(err => {
+				console.log(err);
+				error.text("Something went wrong")
+				swal.close();
 			})
 		}
 	
