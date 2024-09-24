@@ -2822,14 +2822,18 @@ class PhishingDetection(generics.CreateAPIView):
         body = request.data
         url = body.get('search').get('origin')
         print(f"🚀🚀🚀 Checking {url}")
-        html_res = requests.get(url)
-        if html_res.status_code != 200:
-            return response.Response({"error": "Unknown website"}, status=400)
-        
-        html = html_res.text
-        data = preprocess_input(url, html)
-        result = predict(data)
-        benign, phishing = np.array(result).flatten().tolist()
+
+        url = preprocess_input(url)
+        predict_result = predict(url)
+        predict_result = np.array(predict_result).flatten().tolist()
+        benign = None
+        phishing = None
+
+        for item in predict_result:
+            if item.get("label") == "benign":
+                benign = item.get("score")
+            elif item.get("label") == "phishing":
+                phishing = item.get("score")
 
         return response.Response(
             {
