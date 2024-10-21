@@ -28,7 +28,7 @@
             </a>
             <div class="dropdown-menu" aria-labelledby="topnav-history">
               <a href="{% url 'scan_history' current_project.slug %}" class="dropdown-item">Scan History</a>
-              <a href="{% url 'subscan_history' current_project.slug %}" class="dropdown-item">Sub Scan History</a>
+              <a href="{% url 'subscan_history'  current_project.slug %}" class="dropdown-item">Sub Scan History</a>
               <a href="{% url 'scheduled_scan_view' current_project.slug %}" class="dropdown-item">Scheduled Scan</a>
               <div class="dropdown-divider"></div>
               <a href="{% url 'all_subdomains' current_project.slug %}" class="dropdown-item">All Subdomains</a>
@@ -99,6 +99,11 @@
           <li class="nav-item dropdown {{phishing_nav_active}}">
             <a class="nav-link arrow-none" href="{% url 'phishing' current_project.slug %}">
               <i class="fe-shield me-1"></i> Phishing Detection
+            </a>
+          </li>
+          <li class="nav-item dropdown {{scanner_master_nav_active}}">
+            <a class="nav-link arrow-none" href="{% url 'scanner_master_list_target' current_project.slug %}">
+              <i class="fe-anchor me-1"></i> Scanner
             </a>
           </li>
         </ul>

@@ -70,7 +70,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "rest_framework",
+    "corsheaders",
     "rest_framework_datatables",
+    "scannerMaster.apps.ScannerMasterConfig",
     "dashboard.apps.DashboardConfig",
     "targetApp.apps.TargetappConfig",
     "scanEngine.apps.ScanengineConfig",
@@ -86,8 +88,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    # "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "login_required.middleware.LoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -110,12 +113,21 @@ TEMPLATES = [
         },
     }
 ]
+
+CORS_ALLOWED_ORIGINS = ["http://scanner.4web"]
+
+CORS_ALLOW_HEADERS = "*"
+
 ROOT_URLCONF = "reNgine.urls"
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",
         "rest_framework_datatables.renderers.DatatablesRenderer",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        # "rest_framework_api_key.permissions.HasAPIKey",
+        "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_FILTER_BACKENDS": ("rest_framework_datatables.filters.DatatablesFilterBackend",),
     "DEFAULT_PAGINATION_CLASS": ("rest_framework_datatables.pagination.DatatablesPageNumberPagination"),
@@ -263,3 +275,19 @@ LOGGING = {
 
 HUGGING_FACE_API_KEY = env("HUGGING_FACE_API_KEY")
 HUGGING_FACE_MODEL = env("HUGGING_FACE_MODEL")
+
+
+RABBITMQ_CONFIG = {
+    "BROKER_HOST": env("BROKER_HOST"),
+    "BROKER_PORT": env("BROKER_PORT"),
+    "BROKER_USER": env("BROKER_USER"),
+    "BROKER_PASS": env("BROKER_PASS"),
+    "MANAGER_PORT": env("MANAGER_PORT"),
+    "QUEUE": env("BROKER_QUEUE"),
+}
+
+
+from .rabbitmq import RabbitMQ
+
+rabbitmq = RabbitMQ(RABBITMQ_CONFIG)
+rabbitmq.create_connection()

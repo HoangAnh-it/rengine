@@ -9,6 +9,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
 from reNgine.views import serve_protected_media
+from django.views.decorators.csrf import csrf_exempt
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -30,6 +31,7 @@ urlpatterns = [
     path("scanEngine/", include("scanEngine.urls")),
     path("scan/", include("startScan.urls")),
     path("phishing/", include("phishing.urls")),
+    path("scanner_master/", include("scannerMaster.urls")),
     path("recon_note/", include("recon_note.urls")),
     path("login/", auth_views.LoginView.as_view(template_name="base/login.html"), name="login"),
     path("logout/", auth_views.LogoutView.as_view(template_name="base/logout.html"), name="logout"),

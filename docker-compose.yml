@@ -13,6 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     networks:
       - rengine_network
+      - toan_network
 
   redis:
     restart: always
@@ -20,6 +21,7 @@ services:
     hostname: redis
     networks:
       - rengine_network
+      - toan_network
 
   # celery:
   #   build:
@@ -117,10 +119,42 @@ services:
       # - celery
       # - celery-beat
     networks:
+      toan_network:
       rengine_network:
         aliases:
           - rengine
 
+  scanner:
+    build:
+      context: ./web
+    restart: always
+    command: python3 reNgine/scanner.py
+    container_name: rengine_scanner_consumer
+    env_file:
+      - .env
+    environment:
+      - DEBUG=0
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
+      - RENGINE_CURRENT_VERSION='2.1.3'
+      - BROKER_QUEUE=scanner
+      - BROKER_HOST=scanner.rabbitmq
+      - BROKER_PORT=5672
+      - BROKER_USER=rabbitmq@sbox4web.mvs
+      - BROKER_PASS=rabbitmq@sbox4web.mvs
+      - MANAGER_PORT=15672
+    depends_on:
+      - web
+    networks:
+      toan_network:
+      
   proxy:
     restart: always
     image: nginx:alpine
@@ -144,6 +178,8 @@ services:
       - scan_results:/usr/src/scan_results
     networks:
       - rengine_network
+      - toan_network
+
   ollama:
     image: ollama/ollama
     container_name: ollama
@@ -153,9 +189,12 @@ services:
       - "11434:11434"
     networks:
       - rengine_network
+      - toan_network
 
 networks:
   rengine_network:
+  toan_network:
+    external: true
 
 volumes:
   tool_config:

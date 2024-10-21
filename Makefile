@@ -8,7 +8,7 @@ COMPOSE_PREFIX_CMD := COMPOSE_DOCKER_CLI_BUILD=1
 
 COMPOSE_ALL_FILES := -f docker-compose.yml
 # SERVICES          := db web proxy redis celery celery-beat ollama
-SERVICES          := db web proxy redis  ollama
+SERVICES          := db web proxy redis  ollama scanner
 
 # Check if 'docker compose' command is available, otherwise use 'docker-compose'
 DOCKER_COMPOSE := $(shell if command -v docker > /dev/null && docker compose version > /dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
@@ -41,7 +41,7 @@ changepassword:	## Change password for user
 	${COMPOSE_PREFIX_CMD} ${DOCKER_COMPOSE} ${COMPOSE_ALL_FILES} exec web python3 manage.py changepassword
 
 migrate:		## Apply migrations
-	${COMPOSE_PREFIX_CMD} ${DOCKER_COMPOSE} ${COMPOSE_ALL_FILES} exec web python3 manage.py migrate
+	${COMPOSE_PREFIX_CMD} ${DOCKER_COMPOSE} ${COMPOSE_ALL_FILES} exec web  python3 manage.py migrate
 
 pull:			## Pull Docker images.
 	docker login docker.pkg.github.com

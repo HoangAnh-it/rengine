@@ -1,0 +1,159 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% load humanize %}
+{% load permission_tags %}
+
+{% block title %}
+Detail targets
+{% endblock title %}
+
+{% block custom_js_css_link %}
+{% endblock custom_js_css_link %}
+
+{% block breadcrumb_title %}
+<li class="breadcrumb-item active"><a href="{% url 'list_organization' current_project.slug %}">Organization</a></li>
+{% endblock breadcrumb_title %}
+
+{% block page_title %}
+Target: bwapp.hakhub.net
+{% endblock page_title %}
+
+{% block main_content %}
+<div class="d-flex">
+ <div class="w-25 px-2">
+	{% for item in links %}
+		{% if item.is_active %}
+			<div 
+			class="page p-1 mb-1 border-bottom text-truncate tab-active" 
+			role="button" data-placement="left" title="{{ item.link }}"
+			>
+				<a href="/scanner_master/{{current_project.slug}}/{{item.id}}/">{{ item.link }}</a>
+			</div>
+			{% else %}
+			<div 
+			class="page p-1 mb-1 border-bottom text-truncate" 
+			role="button" data-placement="left" title="{{ item.link }}"
+			>
+			<a href="/scanner_master/{{current_project.slug}}/{{item.id}}/">{{ item.link }}</a>
+			</div>
+		{% endif %}
+	{% endfor %}
+ </div>
+
+ <div class="vul-containers">
+	{% for v in target.vulnerabilities %}
+		<div>
+			<div class="collapsible">
+				{{v.name}}
+				<i class="fe-arrow-down icon-arrow rotated"></i>
+			</div>
+			<div class="content">
+				<div class="header-content">Cvss</div>
+				Vector: <p>{{v.cvss_vector}}</p>
+				Base score: <p>{{v.cvss_base_score}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content">Description</div>
+				<p>{{v.description}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content">Cve</div>
+				<p>{{v.cve}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content">Cwe</div>
+				<p>{{v.cwe}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content">Impact</div>
+				<p>{{v.impact}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content">Affected</div>
+				<p>{{v.affected}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content">Solution</div>
+				<p>{{v.solution}}</p>
+			</div>
+			<div class="content">
+				<div class="header-content" > References</div>
+				{% for ref in v.references_links %}
+					<a href="{{ref}}">{{ref}}</a><br>
+				{% endfor %}
+			</div>
+		</div>
+	{% endfor %}
+</div>
+</div>
+{% endblock main_content %}
+
+
+{% block page_level_script %}
+<script src="{% static 'custom/custom.js' %}"></script>
+<script src="{% static 'targetApp/js/custom_organization.js' %}"></script>
+<script>
+	$(document).ready(function() {
+		$(".page").tooltip()
+		// $('.vul-containers .content').hide();
+		$('.collapsible').click(function() {
+			$(this).nextAll('.content').slideToggle();
+			$(this).find('i').toggleClass('rotated');
+		}
+	);
+
+
+
+	})
+</script>
+
+<style>
+	.page:hover {
+		background-color: rgb(190, 190, 190);
+	}
+
+	.vul-containers {
+		flex: 2;
+	}
+
+	.rotated {
+		transform: rotate(180deg);
+		transition: transform 0.3s ease;
+	}
+
+	.tab-active {
+		background: #ccc;
+	}
+
+	.collapsible {
+		background-color: #ccc;
+		padding:  4px;
+		border-radius: 6px;
+		font-weight: bold;
+		color: black;
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 16px;
+		cursor: pointer;
+		margin-bottom: 2px;
+	}
+
+	.collapsible .content {
+		display: none;
+	}
+
+
+	.header-content {
+		font-weight: 700;
+		color: black;
+		font-size: 14px;
+	}
+
+	.header-content::after {
+		content: ":";
+	}
+
+</style>
+{% endblock page_level_script %}

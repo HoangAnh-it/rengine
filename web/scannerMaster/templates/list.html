@@ -1,0 +1,330 @@
+{% extends 'base/base.html' %}
+{% load humanize %}
+{% load static %}
+{% load mathfilters %}
+{% block title %}
+Scanner Master
+{% endblock title %}
+
+{% block custom_js_css_link %}
+<link rel="stylesheet" type="text/css" href="{% static 'custom/custom.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'plugins/j-map/jquery-jvectormap.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.6.3/css/flag-icons.min.css" integrity="sha512-uvXdJud8WaOlQFjlz9B15Yy2Au/bMAvz79F7Xa6OakCl2jvQPdHD0hb3dEqZRdSwG4/sknePXlE7GiarwA/9Wg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+{% endblock custom_js_css_link %}
+
+{% block main_content %}
+<div class="">
+	<div class="current-project" data-slug="{{current_project.slug}}"></div>
+	<div class="input-group w-1/2">
+		<input type="text" class="form-control" placeholder="http:// or https://" aria-label="Scan your website" id="scanner-input">
+		<div class="input-group-append">
+			<button id="start-scan-button" class="btn btn-primary" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Start Scan</button>
+		</div>
+	</div>
+	<div class="message-notification-wrapper">
+		<div id="error" class="text-danger h3"></div>
+	</div>
+
+	<div class="mt-3">
+		<table class="table table-borderless table-nowrap table-hover table-centered m-0">
+			{% if not targets %}
+			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+			  No targets!
+			</div>
+			{% else %}
+			<thead class="table-light">
+			  <tr>
+				<th style="width: 55%">Target</th>
+				<th style="width: 15%">Status</th>
+				<th style="width: 15%">Scan at</th>
+				<th style="width: 15%">Action</th>
+			  </tr>
+			</thead>
+			<tbody id="list-targets-table">
+			  {% for target in targets %}
+			  <tr class="scanner-{{target.id}} data-row">
+				<td ><a href="{% url 'scanner_master_detail_target' current_project.slug target.id %}" target="_blank" class="text-black bs-tooltip hover:underline">{{target.website}}</a></td>
+				{% if target.status == 'Scanning' %}
+				<td class="text-primary">
+						<div class="spinner-border text-primary loading" role="status"></div>
+						{{target.status}}
+				</td>
+				{% elif target.status == 'Done' %}
+					<td class="text-success">{{target.status}}</td>
+				{% elif target.status == 'Error' %}
+					<td class="text-danger">{{target.status}}</td>
+				{% endif %}
+
+				<td>{{target.created_at}}</td>
+				<td>
+					<span class="trash trash-{{target.id}}" data-id="{{target.id}}" data-website="{{target.website}}"><i class="fe-trash"></i></span>
+				</td>
+			</tr>
+			  {% endfor %}
+			</tbody>
+			{% endif %}
+		  </table>
+	</div>
+ 	
+	<div class="confirm-delete-container">
+		<div class="confirm-delete flex flex-column align-items-center">
+			<div class="mb-3">Are you sure to delete target <a class="message"></a> ?</div>
+			<div class="action d-flex flex-row justify-content-around">
+				<div class="p-1 btn btn-cancel">Cancel</div>
+				<div class="p-1 btn btn-delete">Delete</div>
+			</div>
+			<span class="error-message"></span>
+		</div>
+	</div>
+</div>
+
+
+<style>
+	.trash {
+		padding: 6px;
+		border-radius: 4px;
+	}
+
+	.loading {
+		width: 20px;
+		height: 20px;
+	}
+
+	.trash:hover {
+		cursor: pointer;
+		background-color: rgb(199, 199, 199);
+	}
+
+	.confirm-delete-container {
+		display: none;
+		position: fixed;
+		top: 0;
+		left:0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+	}
+	
+	.confirm-delete {	
+		z-index: 9999;
+		position: fixed;
+		top: 50%;
+		left:50%;
+		transform: translate(-50%, -50%);
+		background-color: white;
+		padding: 6px;
+		border-radius: 6px;
+		color: black;
+		box-shadow: 1px 1px 1px 1px #888888;
+	}
+
+	.confirm-delete .message {
+		font-weight: bold;
+		cursor: pointer;
+	}
+
+	.confirm-delete .btn {
+		border-radius: 4px;
+		color: black;
+	}
+	
+	.confirm-delete .btn:hover {
+		background-color: #bdbdbd;
+	}
+
+	.confirm-delete .btn-cancel {
+		margin-right: 4px;
+	}
+
+	.confirm-delete .btn-delete {
+		margin-left: 4px;
+		color:white;
+		background-color: rgb(192, 58, 58);
+	}
+
+</style>
+{% endblock main_content %}
+
+{% block page_level_script %}
+<script type="text/javascript">
+	$(document).ready(function() {
+		current_project = $('.current-project').data()
+		error = $("#error")
+		start_scan_button = $("#start-scan-button")
+		input_scan_button = $("#scanner-input")
+		list_targets_table = $("#list-targets-table")
+		confirm_delete = $(".confirm-delete")
+		confirm_delete_message = $(".confirm-delete .message")
+		confirm_delete_cancel = $(".confirm-delete .btn-cancel")
+		confirm_delete_do_delete = $(".confirm-delete .btn-delete")
+		confirm_delete_error_message = $(".confirm-delete .error-message")
+
+		function showConfirmDelete() {
+			// confirm_delete.css("display","block")
+			confirm_delete.parent().css("display","block")
+		}
+
+		function hideConfirmDelete() {
+			confirm_delete.parent().css("display","none")
+		}
+
+		function reset_event_click_trashes() {
+			trashes = $(".trash")
+			trashes.unbind()
+			trashes.on('click', function(event) {
+				const item_id = $(this).attr("data-id")
+				confirm_delete_do_delete.data('id',$(this).attr('data-id'))
+				confirm_delete_message.text($(this).attr("data-website"))
+				showConfirmDelete()
+			})
+		}
+		reset_event_click_trashes()
+
+		function validate_url(url) {
+			try {
+				url = url.trim()
+				if (!url) {
+					return [null, Error("Domain or IP must not be empty")]
+				}
+				url = new URL(url)
+				return [url, null] 
+			} catch (e) {
+				return [null, Error("Invalid URL")]
+			}
+		}
+
+		function fake(url) {
+			function getFormattedDate() {
+				const now = new Date();
+
+				const year = now.getFullYear();
+				const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+				const day = String(now.getDate()).padStart(2, '0');
+
+				const hours = String(now.getHours()).padStart(2, '0');
+				const minutes = String(now.getMinutes()).padStart(2, '0');
+				const seconds = String(now.getSeconds()).padStart(2, '0');
+
+				return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+			}
+			target = 1
+			$("#list-targets-table").prepend(
+				`
+					<tr class="scanner-${target}">
+					<td ><a href="/scanner_master/${current_project.slug}/${target}/" target="_blank" class="text-black bs-tooltip hover:underline">${url}</a></td>
+					<td class="text-primary status-col">
+						<div class="spinner-border text-primary loading" role="status"></div>
+						Scanning
+					</td>
+					<td>${getFormattedDate()}</td>
+					<td><span class="trash trash-${target}" data-id="${target}" data-website="${url}"><i class="fe-trash"></i></span></td>
+				</tr>
+				`
+			)
+		}
+
+		function start_scan(url) {
+			error.text("")
+			const [url_object, e] = validate_url(url)
+			if (e) {
+				error.text(e.toString())
+				return
+			}
+
+			setTimeout(() => {
+				$('.status-col').first().html(
+					`
+					<td class="text-success">Done	</td>
+
+					`
+				)
+			}, 20000)
+
+			fake(url)
+			return
+
+			fetch("/api/scanner_master/create", {
+				method: "POST",
+				credentials: "same-origin",
+				body: JSON.stringify({
+					"url": url,
+				}),
+				headers: {
+					"X-CSRFToken": getCookie("csrftoken"),
+					"Content-Type": 'application/json',
+				}
+			}).then(res => res.json())
+			.then(target => {
+				console.log(target)
+				color_status = ""
+				switch (target.status) {
+					case "Scanning":
+						color_status = "text-primary"
+						break;
+
+					case "Done":
+						color_status = "text-success"
+						break;
+
+					case "Error":
+					color_status = "text-danger"
+						break;
+				}
+				console.log('append', color_status)
+				$("#list-targets-table").prepend(
+					`
+					 <tr class="scanner-${target.id}">
+						<td ><a href="/scanner_master/${current_project.slug}/${target.id}/" target="_blank" class="text-black bs-tooltip hover:underline">${target.website}</a></td>
+						<td class="${color_status}">${target.status}</td>
+						<td>${target.created_at}</td>
+						<td><span class="trash trash-${target.id}" data-id="${target.id}" data-website="${target.website}"><i class="fe-trash"></i></span></td>
+					</tr>
+					`
+				)
+				console.log('done')
+				reset_event_click_trashes()
+			}).catch(err => {
+				console.log(err);
+				error.text("Something went wrong")
+			})
+		}
+		input_scan_button.on('keypress', function(event) {
+			if (event.which == 13) {
+				start_scan($(this).val())
+			}
+		})
+
+		start_scan_button.on('click', function(event) {
+			start_scan(input_scan_button.val())
+		})
+		
+
+		confirm_delete_cancel.on('click', function(e) {
+			confirm_delete_message.text("")
+			hideConfirmDelete()
+		})
+
+		confirm_delete_do_delete.on('click', function(e) {
+			const item_id = $(this).data().id
+			fetch(`/api/scanner_master/delete/${item_id}/`, {
+				method: "DELETE",
+				headers: {
+					"X-CSRFToken": getCookie("csrftoken"),
+				},
+			})
+			.then(res => {
+				if(res.status===204) {
+					hideConfirmDelete()
+					confirm_delete_message.text("")
+					$(`.scanner-${item_id}`).remove()
+					return
+				}
+				confirm_delete_error_message.text("Something went wrong")
+			}).catch(err => {
+				console.log(err)
+				confirm_delete_error_message.text("Something went wrong")
+			})
+		})
+	})
+</script>
+{% endblock page_level_script %}
