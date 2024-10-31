@@ -78,7 +78,8 @@ urlpatterns = [
     path("scan_status/", ScanStatus.as_view(), name="scan_status"),
     path("action/create/project", CreateProjectApi.as_view(), name="create_project"),
     path("phishing/predict/", PhishingDetection.as_view()),
-    path("scanner_master/create", StartScan.as_view()),
+    path("scanner_master/create", CreateTargetView.as_view()),
+    path("scanner_master/start_scan", StartScan.as_view()),
     re_path(r"^scanner_master/delete/(?P<pk>\d+)/$", DeleteTargetScannerMaster.as_view()),
     re_path(r"^scanner_master/post_result/$", PostResultVulnerability.as_view()),
 ]

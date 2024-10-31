@@ -18,7 +18,10 @@ Scanner Master
 	<div class="input-group w-1/2">
 		<input type="text" class="form-control" placeholder="http:// or https://" aria-label="Scan your website" id="scanner-input">
 		<div class="input-group-append">
-			<button id="start-scan-button" class="btn btn-primary" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Start Scan</button>
+			<button id="start-scan-button" class="btn btn-primary" type="button">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> 
+				Start Scan
+			</button>
 		</div>
 	</div>
 	<div class="message-notification-wrapper">
@@ -42,22 +45,26 @@ Scanner Master
 			</thead>
 			<tbody id="list-targets-table">
 			  {% for target in targets %}
-			  <tr class="scanner-{{target.id}} data-row">
-				<td ><a href="{% url 'scanner_master_detail_target' current_project.slug target.id %}" target="_blank" class="text-black bs-tooltip hover:underline">{{target.website}}</a></td>
+			  <tr class="scanner-{{target.id}} data-row" data-id="{{target.id}}" data-status="{{target.status}}">
+				<td class="website-col-{{target.id}}">
+						<a href="{% url 'scanner_master_detail_target' current_project.slug target.id %}" target="_blank" class="text-black bs-tooltip hover:underline">{{target.website}}</a>
+				</td>
 				{% if target.status == 'Scanning' %}
-				<td class="text-primary">
+				<td class="status-col-{{target.id}} text-primary">
 						<div class="spinner-border text-primary loading" role="status"></div>
 						{{target.status}}
 				</td>
 				{% elif target.status == 'Done' %}
-					<td class="text-success">{{target.status}}</td>
+					<td class="status-col-{{target.id}} text-success">{{target.status}}</td>
 				{% elif target.status == 'Error' %}
-					<td class="text-danger">{{target.status}}</td>
+					<td class="status-col-{{target.id}} text-danger">{{target.status}}</td>
 				{% endif %}
 
 				<td>{{target.created_at}}</td>
-				<td>
-					<span class="trash trash-{{target.id}}" data-id="{{target.id}}" data-website="{{target.website}}"><i class="fe-trash"></i></span>
+				<td class="actionButton-{{target.id}} ">
+					{% if target.status != 'Scanning' %}
+						<span class="trash trash-{{target.id}}" data-id="{{target.id}}" data-website="{{target.website}}"><i class="fe-trash"></i></span>
+					{% endif %}
 				</td>
 			</tr>
 			  {% endfor %}
@@ -71,7 +78,9 @@ Scanner Master
 			<div class="mb-3">Are you sure to delete target <a class="message"></a> ?</div>
 			<div class="action d-flex flex-row justify-content-around">
 				<div class="p-1 btn btn-cancel">Cancel</div>
-				<div class="p-1 btn btn-delete">Delete</div>
+				<div class="p-1 btn btn-delete">
+					Delete
+				</div>
 			</div>
 			<span class="error-message"></span>
 		</div>
@@ -148,24 +157,27 @@ Scanner Master
 {% block page_level_script %}
 <script type="text/javascript">
 	$(document).ready(function() {
-		current_project = $('.current-project').data()
-		error = $("#error")
-		start_scan_button = $("#start-scan-button")
-		input_scan_button = $("#scanner-input")
-		list_targets_table = $("#list-targets-table")
-		confirm_delete = $(".confirm-delete")
-		confirm_delete_message = $(".confirm-delete .message")
-		confirm_delete_cancel = $(".confirm-delete .btn-cancel")
-		confirm_delete_do_delete = $(".confirm-delete .btn-delete")
-		confirm_delete_error_message = $(".confirm-delete .error-message")
+		const loading_icon = `<div class="spinner-border text-white loading" role="status"></div>`
+		const current_project = $('.current-project').data()
+		const error = $("#error")
+		const start_scan_button = $("#start-scan-button")
+		const input_scan_button = $("#scanner-input")
+		const list_targets_table = $("#list-targets-table")
+		const confirm_delete = $(".confirm-delete")
+		const confirm_delete_message = $(".confirm-delete .message")
+		const confirm_delete_cancel = $(".confirm-delete .btn-cancel")
+		const confirm_delete_do_delete = $(".confirm-delete .btn-delete")
+		const confirm_delete_error_message = $(".confirm-delete .error-message")
+		let statusMapping = {}
 
 		function showConfirmDelete() {
-			// confirm_delete.css("display","block")
 			confirm_delete.parent().css("display","block")
+			confirm_delete_error_message.text("")
 		}
-
+		
 		function hideConfirmDelete() {
 			confirm_delete.parent().css("display","none")
+			confirm_delete_error_message.text("")
 		}
 
 		function reset_event_click_trashes() {
@@ -178,6 +190,7 @@ Scanner Master
 				showConfirmDelete()
 			})
 		}
+
 		reset_event_click_trashes()
 
 		function validate_url(url) {
@@ -193,100 +206,95 @@ Scanner Master
 			}
 		}
 
-		function fake(url) {
-			function getFormattedDate() {
-				const now = new Date();
+		function getColorStatus(status) {
+			switch (status) {
+				case "Scanning":
+					return "text-primary"
 
-				const year = now.getFullYear();
-				const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-				const day = String(now.getDate()).padStart(2, '0');
+				case "Done":
+					return "text-success"
 
-				const hours = String(now.getHours()).padStart(2, '0');
-				const minutes = String(now.getMinutes()).padStart(2, '0');
-				const seconds = String(now.getSeconds()).padStart(2, '0');
-
-				return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+				case "Error":
+					return "text-danger"
 			}
-			target = 1
-			$("#list-targets-table").prepend(
-				`
-					<tr class="scanner-${target}">
-					<td ><a href="/scanner_master/${current_project.slug}/${target}/" target="_blank" class="text-black bs-tooltip hover:underline">${url}</a></td>
-					<td class="text-primary status-col">
-						<div class="spinner-border text-primary loading" role="status"></div>
-						Scanning
-					</td>
-					<td>${getFormattedDate()}</td>
-					<td><span class="trash trash-${target}" data-id="${target}" data-website="${url}"><i class="fe-trash"></i></span></td>
-				</tr>
-				`
-			)
 		}
-
-		function start_scan(url) {
-			error.text("")
-			const [url_object, e] = validate_url(url)
-			if (e) {
-				error.text(e.toString())
-				return
-			}
-
-			setTimeout(() => {
-				$('.status-col').first().html(
-					`
-					<td class="text-success">Done	</td>
-
-					`
-				)
-			}, 20000)
-
-			fake(url)
-			return
-
-			fetch("/api/scanner_master/create", {
-				method: "POST",
-				credentials: "same-origin",
-				body: JSON.stringify({
-					"url": url,
-				}),
-				headers: {
-					"X-CSRFToken": getCookie("csrftoken"),
-					"Content-Type": 'application/json',
+		async function start_scan(url) {
+			try {
+				if ($('#start-scan-button').find('.loading').length != 0) {
+					return
 				}
-			}).then(res => res.json())
-			.then(target => {
-				console.log(target)
-				color_status = ""
-				switch (target.status) {
-					case "Scanning":
-						color_status = "text-primary"
-						break;
-
-					case "Done":
-						color_status = "text-success"
-						break;
-
-					case "Error":
-					color_status = "text-danger"
-						break;
+				error.text("")
+				const [url_object, e] = validate_url(url)
+				if (e) {
+					error.text(e.toString())
+					return
 				}
-				console.log('append', color_status)
+				loadingElement = `<div class="loading-button-start-scan position-absolute top-50 start-50 translate-middle d-flex justify-content-center align-items-center btn-primary w-100 h-100">
+						<div class="spinner-border text-white loading" role="status"></div>
+					</div>`
+				
+				start_scan_button.prepend(loadingElement)
+				let res = await fetch("/api/scanner_master/create", {
+					method: "POST",
+					credentials: "same-origin",
+					body: JSON.stringify({
+						"url": url,
+					}),
+					headers: {
+						"X-CSRFToken": getCookie("csrftoken"),
+						"Content-Type": 'application/json',
+					}
+				})
+				const target  = await res.json()
+				$('.loading-button-start-scan').remove()
+				const colorStatus = getColorStatus(target.status)
+				let _loading = ""
+				let actionButton = ""
+				if (target.status == "Scanning") {
+					_loading = '<div class="spinner-border text-primary loading" role="status"></div>'
+				}else{
+					actionButton = `<span class="trash trash-${target.id}" data-id="${target.id}" data-website="${target.website}"><i class="fe-trash"></i></span>`
+				}
+				
 				$("#list-targets-table").prepend(
-					`
-					 <tr class="scanner-${target.id}">
-						<td ><a href="/scanner_master/${current_project.slug}/${target.id}/" target="_blank" class="text-black bs-tooltip hover:underline">${target.website}</a></td>
-						<td class="${color_status}">${target.status}</td>
-						<td>${target.created_at}</td>
-						<td><span class="trash trash-${target.id}" data-id="${target.id}" data-website="${target.website}"><i class="fe-trash"></i></span></td>
-					</tr>
-					`
-				)
-				console.log('done')
+						`
+						 <tr class="scanner-${target.id}">
+							<td ><a href="/scanner_master/${current_project.slug}/${target.id}/" target="_blank" class="text-black bs-tooltip hover:underline">${target.website}</a></td>
+							<td class="status-col-${target.id} ${colorStatus}">
+								${_loading}
+								${target.status}
+							</td>
+							<td>${target.created_at}</td>
+							<td class="actionButton-${target.id}">${actionButton}</td>
+						</tr>
+						`
+					)
 				reset_event_click_trashes()
-			}).catch(err => {
+				addToWatch(target.id)
+
+				await fetch("/api/scanner_master/start_scan", {
+						method: "POST",
+						credentials: "same-origin",
+						body: JSON.stringify({
+							"target_id": target.id,
+						}),
+						headers: {
+							"X-CSRFToken": getCookie("csrftoken"),
+							"Content-Type": 'application/json',
+						}
+					})
+				// const data = await res.json()
+				// $(`.status-col-${data.target_id}`).text(data.status)
+				// $(`.status-col-${data.target_id}`).addClass("text-success")
+				// $(`.actionButton-${data.target_id}`).append(`<span class="trash trash-${data.target_id}" data-id="${data.target_id}" data-website="${data.target_website}"><i class="fe-trash"></i></span>`)
+			} catch (err) {
 				console.log(err);
 				error.text("Something went wrong")
-			})
+				
+			}finally {
+				$("#start-scan-button .loading").parent().remove()
+				reset_event_click_trashes()
+			}
 		}
 		input_scan_button.on('keypress', function(event) {
 			if (event.which == 13) {
@@ -306,6 +314,11 @@ Scanner Master
 
 		confirm_delete_do_delete.on('click', function(e) {
 			const item_id = $(this).data().id
+			
+			loadingElement = $($.parseHTML(loading_icon))
+			loadingElement.attr('id', `loading-${item_id}`)
+			confirm_delete_do_delete.prepend(loadingElement)
+
 			fetch(`/api/scanner_master/delete/${item_id}/`, {
 				method: "DELETE",
 				headers: {
@@ -323,8 +336,49 @@ Scanner Master
 			}).catch(err => {
 				console.log(err)
 				confirm_delete_error_message.text("Something went wrong")
+			}).finally(() => {
+				$(`#loading-${item_id}`).remove()
 			})
 		})
+
+		function addToWatch(target_id) {
+			if(target_id in statusMapping) return
+			const intervalId = setInterval(async () => {
+				let detailTarget = await fetch(`/api/scanner_master/delete/${target_id}/`, {
+					method: "GET",
+					headers: {
+						"X-CSRFToken": getCookie("csrftoken"),
+					},
+				})
+				const detailTargetJson = await detailTarget.json()
+				console.log("Check status", target_id, detailTargetJson.status)
+				if (detailTargetJson.status && detailTargetJson.status != "Scanning") {
+					$(`.status-col-${target_id}`).text(detailTargetJson.status)
+					$(`.status-col-${target_id}`).addClass(getColorStatus(detailTargetJson.status))
+					if ($(`.actionButton-${target_id}`).find(`.trash-${target_id}`).length == 0) {
+						$(`.actionButton-${target_id}`).append(`<span class="trash trash-${target_id}" data-id="${target_id}" data-website="${detailTargetJson.website}"><i class="fe-trash"></i></span>`)
+					}
+
+					window.clearInterval(statusMapping[target_id])
+					delete statusMapping[target_id]
+				}
+			}, 5000)
+
+			statusMapping[target_id] = statusMapping
+		}
+		
+		async function watchStatus() {
+			for (const [key, value] of Object.entries(statusMapping)) {
+				window.clearInterval(value)
+			}
+			statusMapping = {}
+
+			$('.data-row[data-status="Scanning"]').each(function() {
+				const target_id = $(this).data("id")
+				addToWatch(target_id)
+			})
+		}
+		watchStatus()
 	})
 </script>
 {% endblock page_level_script %}

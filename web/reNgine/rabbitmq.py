@@ -32,12 +32,11 @@ class RabbitMQ:
             self.connection = pika.BlockingConnection(parameters)
             self.channel = self.connection.channel()
             self.channel.queue_declare(queue=self.QUEUE, durable=True, arguments=self.priority_queue)
-            print("👉👉👉👉👉 connected to rabbitmq", self.QUEUE)
         except Exception as e:
             print(e)
             self.connection = None
             self.channel = None
-            print("Cannot connect to rabbitmq")
+            print("❌❌❌❌ Cannot connect to rabbitmq")
 
     def get_connection(self):
         return self.connection
@@ -46,6 +45,9 @@ class RabbitMQ:
         return self.channel
 
     def push(self, data):
+        if self.channel is None:
+            self.create_connection()
+
         self.channel.basic_publish(
             exchange="",
             routing_key=self.QUEUE,
@@ -63,3 +65,9 @@ class RabbitMQ:
             auto_ack=True,
         )
         self.channel.start_consuming()
+
+    def close(self):
+        if self.channel:
+            self.channel.close()
+        if self.connection:
+            self.connection.close()

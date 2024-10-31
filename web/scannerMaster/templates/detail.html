@@ -16,6 +16,13 @@ Detail targets
 
 {% block page_title %}
 Target: bwapp.hakhub.net
+{% if target.status == 'Scanning' %}
+	(
+	<td class="status-col-{{target.id}} text-primary">
+		{{target.status}}
+	</td>
+	)
+{% endif %}
 {% endblock page_title %}
 
 {% block main_content %}
@@ -23,62 +30,69 @@ Target: bwapp.hakhub.net
  <div class="w-25 px-2">
 	{% for item in links %}
 		{% if item.is_active %}
-			<div 
-			class="page p-1 mb-1 border-bottom text-truncate tab-active" 
-			role="button" data-placement="left" title="{{ item.link }}"
-			>
-				<a href="/scanner_master/{{current_project.slug}}/{{item.id}}/">{{ item.link }}</a>
+		<a href="/scanner_master/{{current_project.slug}}/{{item.target_id}}/?link_id={{item.id}}">
+		<div 
+		class="page p-1 mb-1 border-bottom text-truncate tab-active" 
+		role="button" data-placement="left" title="{{ item.link }}"
+		>
+				{{ item.link }}
 			</div>
-			{% else %}
+		</a>
+		{% else %}
+		<a href="/scanner_master/{{current_project.slug}}/{{item.target_id}}/?link_id={{item.id}}">
 			<div 
 			class="page p-1 mb-1 border-bottom text-truncate" 
 			role="button" data-placement="left" title="{{ item.link }}"
 			>
-			<a href="/scanner_master/{{current_project.slug}}/{{item.id}}/">{{ item.link }}</a>
+				{{ item.link }}
 			</div>
+		</a>
 		{% endif %}
 	{% endfor %}
  </div>
 
  <div class="vul-containers">
-	{% for v in target.vulnerabilities %}
+	{% for v in vulnerabilities %}
 		<div>
 			<div class="collapsible">
-				{{v.name}}
+				{{v.vulnerability_template.name}}
 				<i class="fe-arrow-down icon-arrow rotated"></i>
 			</div>
 			<div class="content">
+				<p>{{v.attack_detail_en}}</p>
+			</div>
+			<div class="content">
 				<div class="header-content">Cvss</div>
-				Vector: <p>{{v.cvss_vector}}</p>
-				Base score: <p>{{v.cvss_base_score}}</p>
+				Vector: <p>{{v.vulnerability_template.cvss_vector}}</p>
+				Base score: <p>{{v.vulnerability_template.cvss_base_score}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content">Description</div>
-				<p>{{v.description}}</p>
+				<p>{{v.vulnerability_template.description}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content">Cve</div>
-				<p>{{v.cve}}</p>
+				<p>{{v.vulnerability_template.cve}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content">Cwe</div>
-				<p>{{v.cwe}}</p>
+				<p>{{v.vulnerability_template.cwe}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content">Impact</div>
-				<p>{{v.impact}}</p>
+				<p>{{v.vulnerability_template.impact}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content">Affected</div>
-				<p>{{v.affected}}</p>
+				<p>{{v.vulnerability_template.affected}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content">Solution</div>
-				<p>{{v.solution}}</p>
+				<p>{{v.vulnerability_template.solution}}</p>
 			</div>
 			<div class="content">
 				<div class="header-content" > References</div>
-				{% for ref in v.references_links %}
+				{% for ref in v.vulnerability_template.references_links %}
 					<a href="{{ref}}">{{ref}}</a><br>
 				{% endfor %}
 			</div>
@@ -95,7 +109,7 @@ Target: bwapp.hakhub.net
 <script>
 	$(document).ready(function() {
 		$(".page").tooltip()
-		// $('.vul-containers .content').hide();
+		$('.vul-containers .content').hide();
 		$('.collapsible').click(function() {
 			$(this).nextAll('.content').slideToggle();
 			$(this).find('i').toggleClass('rotated');

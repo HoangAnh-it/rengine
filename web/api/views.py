@@ -2,8 +2,10 @@ import logging
 import re
 import socket
 from ipaddress import IPv4Network
+from rest_framework.permissions import AllowAny
 
 import requests
+import urllib
 import validators
 from dashboard.models import *
 from django.db.models import CharField, Count, F, Q, Value
@@ -2284,6 +2286,7 @@ import numpy as np
 
 
 class PhishingDetection(generics.CreateAPIView):
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         body = request.data
@@ -2312,86 +2315,142 @@ class PhishingDetection(generics.CreateAPIView):
 
 
 from scannerMaster.models import ScannerMasterResult, ScannerMasterTarget
-from reNgine.settings import rabbitmq
 import json, requests
-from scannerMaster.serializers import TargetSerializer
-import html, urllib
-from bs4 import BeautifulSoup
+from scannerMaster.serializers import DetailTargetSerializer, ScannerMasterResultSerializer, CreateScannerMasterResultSerializer
+from rest_framework_api_key.permissions import HasAPIKey
+from urllib.parse import urlparse, parse_qs
+from reNgine.settings import RABBITMQ_CONFIG
+from reNgine.rabbitmq import RabbitMQ
 
 
-class StartScan(generics.CreateAPIView):
+class CreateTargetView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         target = ScannerMasterTarget.objects.create(
             website=request.data["url"],
             status="Scanning",
         )
-        url = request.data["url"]
-        crawl = requests.get(url)
-        # page = urllib.request.urlopen(url)
-        # soup = BeautifulSoup(page, "html.parser")
-        # hrefs = set([a.get("href") for a in soup.find_all("a")])
-
-        # print("👉👉👉👉", hrefs)
-
-        try:
-            message = {
-                "id": target.id,
-                "url_info": [
-                    {
-                        "id": -1,
-                        "url": url,
-                        "is_first_url": True,
-                        "content_key": "",
-                        "params": {},
-                        "method": "GET",
-                        "request_body": {},
-                        "request_header": {
-                            "method": "GET",
-                            **dict(crawl.request.headers),
-                        },
-                        "response_header": dict(crawl.headers),
-                        "status": 200,
-                    }
-                ],
-                "status": "running",
-                "configuration": {
-                    "using_proxy": [],
-                    "custom_cookies": [],
-                    "scan_custom_configs": {"risk": {"id": 1}, "param": ""},
-                    "custom_headers": [],
-                },
-                "technologies": None,
-                "is_last": True,
-            }
-            message = json.dumps(message)
-            rabbitmq.push(message)
-        except Exception as e:
-            target.status = "Error"
-            target.save()
-            print(e)
-
-        return response.Response(TargetSerializer(instance=target).data)
+        return response.Response(DetailTargetSerializer(instance=target).data)
 
 
-from rest_framework.permissions import AllowAny
+class StartScan(generics.CreateAPIView):
 
-
-class DeleteTargetScannerMaster(generics.UpdateAPIView, generics.DestroyAPIView):
-    queryset = ScannerMasterTarget.objects.all()
-
-
-class PostResultVulnerability(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data
-        result = ScannerMasterResult.objects.create(
-            target_id=data["target_id"],
-            vulnerability_template=data["vul_template_id"],
-            url=data["url"],
-            attack_detail=data["attack_detail"],
-            attack_detail_en=data["attack_detail_en"],
+        rabbitmq = RabbitMQ(RABBITMQ_CONFIG)
+        rabbitmq.create_connection()
+        target_id = request.data["target_id"]
+        target = ScannerMasterTarget.objects.get(id=target_id)
+        url = target.website
+        visited_urls = {url: True}
+        urls = [url]
+        is_first_url = True
+        index = 1
+        while urls:
+            u = urls.pop()
+            url_parser = urlparse(u)
+            crawl = requests.get(url)
+            try:
+                page = urllib.request.urlopen(url)
+                soup = BeautifulSoup(page, "html.parser")
+                hrefs = set([a.get("href") for a in soup.find_all("a")])
+                for href in hrefs:
+                    if href not in visited_urls:
+                        urls.append(href)
+                        visited_urls[href] = True
+
+                is_last = len(hrefs) == 0 and len(urls) == 0
+
+                message = {
+                    "id": target.id,
+                    "url_info": [
+                        {
+                            "id": -1,
+                            "url": u,
+                            "is_first_url": is_first_url,
+                            "content_key": "",
+                            "params": parse_qs(url_parser.query),
+                            "method": "GET",
+                            "request_body": {},
+                            "request_header": {
+                                **dict(crawl.request.headers),
+                                "method": "GET",
+                            },
+                            "response_header": dict(crawl.headers),
+                            "status": crawl.status_code,
+                        }
+                    ],
+                    "status": "running",
+                    "configuration": {
+                        "using_proxy": [],
+                        "custom_cookies": [],
+                        "scan_custom_configs": {"risk": {"id": 1}, "param": ""},
+                        "custom_headers": [],
+                    },
+                    "technologies": None,
+                    "is_last": is_last,
+                }
+
+                print("=====👍======>>> Push", index)
+                index += 1
+                message = json.dumps(message)
+                rabbitmq.push(message)
+                if is_first_url:
+                    is_first_url = False
+
+            except Exception as e:
+                target.status = "Error"
+                target.save()
+                print(e)
+
+        # rabbitmq.push(
+        #     json.dumps(
+        #         {
+        #             "event": "finish",
+        #             "target_id": target.id,
+        #         }
+        #     )
+        # )
+        rabbitmq.close()
+        return response.Response(
+            {
+                "status": "Done",
+                "target_id": target.id,
+                "target_website": target.website,
+            }
         )
-        print("save result", result.id)
+
+
+class DeleteTargetScannerMaster(generics.UpdateAPIView, generics.DestroyAPIView, generics.RetrieveAPIView):
+    permission_classes_by_method = {
+        "GET": [],
+        "PATCH": [HasAPIKey],
+        "DELETE": [],
+    }
+
+    def get_permissions(self):
+        return [per() for per in self.permission_classes_by_method[self.request.method]]
+
+    queryset = ScannerMasterTarget.objects.all()
+    serializer_class = DetailTargetSerializer
+
+
+class PostResultVulnerability(generics.CreateAPIView):
+    permission_classes = [HasAPIKey]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        ser = CreateScannerMasterResultSerializer(
+            data={
+                "target_id": data["target_id"],
+                "vulnerability_template": data["vul_template_id"],
+                "url": data["url"],
+                "attack_detail": data["attack_detail"],
+                "attack_detail_en": data["attack_detail_en"],
+            }
+        )
+        ser.is_valid(raise_exception=True)
+        result = ser.save()
         return response.Response({"message": result.id})
