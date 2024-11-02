@@ -128,7 +128,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
-        "rest_framework_api_key.permissions.HasAPIKey",
+        # "rest_framework_api_key.permissions.HasAPIKey",
     ),
     "DEFAULT_FILTER_BACKENDS": ("rest_framework_datatables.filters.DatatablesFilterBackend",),
     "DEFAULT_PAGINATION_CLASS": ("rest_framework_datatables.pagination.DatatablesPageNumberPagination"),
@@ -136,8 +136,6 @@ REST_FRAMEWORK = {
 }
 WSGI_APPLICATION = "reNgine.wsgi.application"
 API_KEY_CUSTOM_HEADER = "HTTP_X_API_KEY"
-
-SESSION_COOKIE_HTTPONLY = True
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
