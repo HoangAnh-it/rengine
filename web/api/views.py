@@ -2319,8 +2319,10 @@ import json, requests
 from scannerMaster.serializers import DetailTargetSerializer, ScannerMasterResultSerializer, CreateScannerMasterResultSerializer
 from rest_framework_api_key.permissions import HasAPIKey
 from urllib.parse import urlparse, parse_qs
-from reNgine.settings import RABBITMQ_CONFIG
-from reNgine.rabbitmq import RabbitMQ
+
+# from reNgine.settings import RABBITMQ_CONFIG
+# from reNgine.rabbitmq import RabbitMQ
+from scannerTool.source.scan_controller import ScanController
 
 
 class CreateTargetView(generics.CreateAPIView):
@@ -2339,8 +2341,9 @@ class StartScan(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
-        rabbitmq = RabbitMQ(RABBITMQ_CONFIG)
-        rabbitmq.create_connection()
+        # rabbitmq = RabbitMQ(RABBITMQ_CONFIG)
+        # rabbitmq.create_connection()
+        scanner = ScanController()
         target_id = request.data["target_id"]
         target = ScannerMasterTarget.objects.get(id=target_id)
         url = target.website
@@ -2392,11 +2395,11 @@ class StartScan(generics.CreateAPIView):
                     "technologies": None,
                     "is_last": is_last,
                 }
-
-                print("=====👍======>>> Push", index)
+                scanner.scanner(message)
+                print("=====👍======>>> Done scan", index)
                 index += 1
-                message = json.dumps(message)
-                rabbitmq.push(message)
+                # message = json.dumps(message)
+                # rabbitmq.push(message)
                 if is_first_url:
                     is_first_url = False
 
@@ -2413,7 +2416,10 @@ class StartScan(generics.CreateAPIView):
         #         }
         #     )
         # )
-        rabbitmq.close()
+        # rabbitmq.close()
+
+        target.status = "Done"
+        target.save()
         return response.Response(
             {
                 "status": "Done",

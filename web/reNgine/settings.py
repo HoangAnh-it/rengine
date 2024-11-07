@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     # "corsheaders",
     "rest_framework_datatables",
     "scannerMaster.apps.ScannerMasterConfig",
+    "scannerTool.apps.ScannerToolConfig",
     "dashboard.apps.DashboardConfig",
     "targetApp.apps.TargetappConfig",
     "scanEngine.apps.ScanengineConfig",

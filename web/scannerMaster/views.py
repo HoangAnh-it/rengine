@@ -3,6 +3,8 @@ from django.http import HttpResponse, JsonResponse
 from .serializers import *
 from .models import *
 from dashboard.models import Project
+from django.db.models import F
+from .serializers import ScannerMasterVulnerabilityTemplatePreviewSerializer
 
 
 def list_targets(request, slug):
@@ -18,8 +20,8 @@ def list_targets(request, slug):
 
 def detail_target(request, slug, id):
     target = ScannerMasterTarget.objects.filter(id=id)
-    detail_id = request.GET.get("link_id")
-    detail = ScannerMasterResult.objects.get(id=detail_id) if detail_id else None
+    vul_template_id = request.GET.get("vul_template")
+    template = "list-vuls.html" if not vul_template_id else "detail.html"
 
     if not target.exists():
         target = None
@@ -27,21 +29,19 @@ def detail_target(request, slug, id):
         target = target.get()
 
     results = ScannerMasterResult.objects.filter(target_id=id)
-    links = []
-    for r in results.distinct("url"):
-        links.append(
-            {
-                "link": r.url,
-                "id": r.id,
-                "is_active": r.id == detail_id,
-                "target_id": target.id,
-            }
-        )
+    vulnerability_template_ids = set(results.values_list("vulnerability_template_id", flat=True))
+    vulnerabilities = ScannerMasterVulnerabilityTemplatePreviewSerializer(instance=ScannerMasterVulnerabilityTemplate.objects.filter(id__in=vulnerability_template_ids), many=True).data
+    vulnerabilities.sort(key=lambda v: (-v["severity_order"], -float(v["cvss_base_score"])))
+
+    list_urls = ScannerMasterResult.objects.filter(vulnerability_template=vul_template_id).distinct("url")
+    vul_template = ScannerMasterVulnerabilityTemplate.objects.get(id=vul_template_id) if vul_template_id else None
 
     context = {
         "target": DetailTargetSerializer(instance=target).data,
-        "links": links,
-        "vulnerabilities": ScannerMasterResultSerializer(instance=ScannerMasterResult.objects.filter(url=detail.url).distinct("vulnerability_template"), many=True).data if detail else [],
+        "vulnerabilities": vulnerabilities,
+        "list_urls": ScannerMasterResultSerializer(instance=list_urls, many=True).data,
+        "vul_template_active": vul_template_id,
+        "vulnerability_template": ScannerMasterVulnerabilityTemplateSerializer(instance=vul_template).data if vul_template_id else None,
     }
 
-    return render(request, "detail.html", context)
+    return render(request, template, context)

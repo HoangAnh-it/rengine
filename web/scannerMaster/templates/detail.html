@@ -27,78 +27,79 @@ Target: bwapp.hakhub.net
 
 {% block main_content %}
 <div class="d-flex">
- <div class="w-25 px-2">
-	{% for item in links %}
-		{% if item.is_active %}
-		<a href="/scanner_master/{{current_project.slug}}/{{item.target_id}}/?link_id={{item.id}}">
-		<div 
-		class="page p-1 mb-1 border-bottom text-truncate tab-active" 
-		role="button" data-placement="left" title="{{ item.link }}"
-		>
-				{{ item.link }}
-			</div>
-		</a>
-		{% else %}
-		<a href="/scanner_master/{{current_project.slug}}/{{item.target_id}}/?link_id={{item.id}}">
-			<div 
-			class="page p-1 mb-1 border-bottom text-truncate" 
-			role="button" data-placement="left" title="{{ item.link }}"
-			>
-				{{ item.link }}
-			</div>
-		</a>
-		{% endif %}
+ <div class="px-2">
+	{% for v in vulnerabilities %}
+		<div class="vulnerability-item text-truncate" data-id="{{v.id}}" data-active="{{vul_template_active}}">
+			<a href="/scanner_master/{{current_project.slug}}/{{target.id}}/?vul_template={{v.id}}">
+				<div class="name" role="button" data-placement="left" title="{{ v.name }}">
+					{{ v.name }}
+				</div>
+				<div class="more-info">
+					<i class="fe-alert-triangle icon-{{v.severity}}"></i>
+					<div class="severity">{{v.severity|title}}</div>
+				</div>
+			</a>
+		</div>
 	{% endfor %}
  </div>
 
- <div class="vul-containers">
-	{% for v in vulnerabilities %}
-		<div>
-			<div class="collapsible">
-				{{v.vulnerability_template.name}}
-				<i class="fe-arrow-down icon-arrow rotated"></i>
-			</div>
-			<div class="content">
-				<p>{{v.attack_detail_en}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Cvss</div>
-				Vector: <p>{{v.vulnerability_template.cvss_vector}}</p>
-				Base score: <p>{{v.vulnerability_template.cvss_base_score}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Description</div>
-				<p>{{v.vulnerability_template.description}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Cve</div>
-				<p>{{v.vulnerability_template.cve}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Cwe</div>
-				<p>{{v.vulnerability_template.cwe}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Impact</div>
-				<p>{{v.vulnerability_template.impact}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Affected</div>
-				<p>{{v.vulnerability_template.affected}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content">Solution</div>
-				<p>{{v.vulnerability_template.solution}}</p>
-			</div>
-			<div class="content">
-				<div class="header-content" > References</div>
-				{% for ref in v.vulnerability_template.references_links %}
-					<a href="{{ref}}">{{ref}}</a><br>
-				{% endfor %}
-			</div>
+ <div class="detail">
+	<div class="tab">
+		<div class="tab-item tab-item-vulnerability">Vulnerability</div>
+		<div class="tab-item tab-item-paths">Paths</div>
+	</div>
+	<div class="tab-content tab-content-vulnerability">
+		<div class="content">
+			<div class="header-content">Cvss</div>
+			<p>Vector: {{vulnerability_template.cvss_vector}}</p>
+			<p>Base score: {{vulnerability_template.cvss_base_score}}</p>
 		</div>
-	{% endfor %}
-</div>
+		<div class="content">
+			<div class="header-content">Description</div>
+			<p>{{vulnerability_template.description}}</p>
+		</div>
+		<div class="content">
+			<div class="header-content">Cve</div>
+			<p>{{vulnerability_template.cve}}</p>
+		</div>
+		<div class="content">
+			<div class="header-content">Cwe</div>
+			<p>{{vulnerability_template.cwe}}</p>
+		</div>
+		<div class="content">
+			<div class="header-content">Impact</div>
+			<p>{{vulnerability_template.impact}}</p>
+		</div>
+		<div class="content">
+			<div class="header-content">Affected</div>
+			<p>{{vulnerability_template.affected}}</p>
+		</div>
+		<div class="content">
+			<div class="header-content">Solution</div>
+			<p>{{vulnerability_template.solution}}</p>
+		</div>
+		<div class="content">
+			<div class="header-content" > References</div>
+			{% for ref in vulnerability_template.references_links %}
+				<a href="{{ref}}">{{ref}}</a><br>
+			{% endfor %}
+		</div>
+	</div>
+	 <div class="w-full tab-content tab-content-paths result-container">
+		{% for result in list_urls %}
+			<div>
+				<div class="collapsible">
+					{{result.url}}
+					<i class="fe-arrow-down icon-arrow"></i>
+				</div>
+				<div class="content">
+					<p>{{result.attack_detail_en}}</p>
+				</div>
+			</div>
+		{% endfor %}
+	</div>
+ </div>
+
 </div>
 {% endblock main_content %}
 
@@ -108,42 +109,102 @@ Target: bwapp.hakhub.net
 <script src="{% static 'targetApp/js/custom_organization.js' %}"></script>
 <script>
 	$(document).ready(function() {
+		$('.vulnerability-item').each(function() {
+			if ($(this).attr("data-id") == $(this).attr('data-active')) {
+				$(this).addClass("vulnerability-item-active")
+			}
+		})
+
 		$(".page").tooltip()
-		$('.vul-containers .content').hide();
+		$('.result-container .content').hide();
 		$('.collapsible').click(function() {
 			$(this).nextAll('.content').slideToggle();
 			$(this).find('i').toggleClass('rotated');
 		}
-	);
+		);
 
+		function init() {
+			$('.tab-item-vulnerability').addClass("tab-active")
+			$('.tab-content-paths').hide()
+		}
 
+		init()
+		$('.tab-item-vulnerability').click(function() {
+			$(this).addClass("tab-active")
+			$('.tab-item-paths').removeClass("tab-active")
+			$('.tab-content-vulnerability').show()
+			$('.tab-content-paths').hide()
+		})
 
+		$('.tab-item-paths').click(function() {
+			$(this).addClass("tab-active")
+			$('.tab-item-vulnerability').removeClass("tab-active")
+			$('.tab-content-paths').show()
+			$('.tab-content-vulnerability').hide()
+		})
 	})
 </script>
 
 <style>
-	.page:hover {
-		background-color: rgb(190, 190, 190);
+
+	a {
+		color: black;
+	}
+	
+	.vulnerability-item {
+		padding: 4px 6px;
+		border-bottom: 1px solid #ccc;
+		font-size: medium;
+		margin: 12px 0;
+		border-radius: 6px;
 	}
 
-	.vul-containers {
+	.vulnerability-item-active {
+		font-weight: bold;
+		background-color: #e6e6e6;
+	}
+
+	.vulnerability-item.name {
+		margin-bottom: 2px;
+	}
+
+	.vulnerability-item .more-info {
+		margin: 2px 0;
+		display: flex;
+		justify-content: start;
+		align-items: center;
+		gap: 4px;
+		font-size: small;
+	}
+
+	.detail {
 		flex: 2;
+		margin-left: 12px;
+		background-color: white;
+		padding: 6px;
+		border-radius: 6px;
 	}
 
-	.rotated {
-		transform: rotate(180deg);
-		transition: transform 0.3s ease;
+	.icon-critical {
+		color: #fe3821;	
 	}
-
-	.tab-active {
-		background: #ccc;
+	.icon-high {
+		color: #e68212;	
+	}
+	.icon-medium {
+		color: #fcbd01;	
+	}
+	.icon-low {
+		color: #5ec92d;	
+	}
+	.icon-info {
+		color: #41b9ff;	
 	}
 
 	.collapsible {
-		background-color: #ccc;
+		background-color: rgb(236, 236, 236);
 		padding:  4px;
 		border-radius: 6px;
-		font-weight: bold;
 		color: black;
 		display: flex;
 		flex-direction: row;
@@ -167,6 +228,40 @@ Target: bwapp.hakhub.net
 
 	.header-content::after {
 		content: ":";
+	}
+
+	.rotated {
+		transform: rotate(180deg);
+		transition: transform 0.3s ease;
+	}
+
+	.tab {
+		display: flex;
+		cursor: pointer;
+		margin-bottom: 12px;
+		border-top: 1px solid #ccc;
+		border-bottom: 1px solid #ccc;
+		font-size: large;
+		font-weight: bold;
+	}
+
+	.tab-content {
+		margin: 0 6px;
+	}
+	
+	.tab-active {
+		border-bottom: 2px solid #ccc;
+		color: #2d8cf0;
+		border-color: #2d8cf0;
+	}
+
+	.tab-item {
+		padding: 4px;
+		margin: 0 3px;
+	}
+	
+	.tab-item:hover {
+		background-color: #ccc;
 	}
 
 </style>
