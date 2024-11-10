@@ -15,7 +15,7 @@ Detail targets
 {% endblock breadcrumb_title %}
 
 {% block page_title %}
-Target: bwapp.hakhub.net
+Target: {{target.website}}
 {% if target.status == 'Scanning' %}
 	(
 	<td class="status-col-{{target.id}} text-primary">

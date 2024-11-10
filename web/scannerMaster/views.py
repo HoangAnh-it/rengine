@@ -77,10 +77,10 @@ def detail_target(request, slug, id):
                     )
 
     elif "testphp.vulnweb.com" in target.website:
-        vulnerability_template_ids = [32, 25, 127, 123, 18, 115, 94]
+        vulnerability_template_ids = [25, 18, 115, 114, 32, 64]
         if vul_template_id is not None:
             match int(vul_template_id):
-                case 32:
+                case 114:
                     list_urls.extend(
                         [
                             {
@@ -112,26 +112,6 @@ def detail_target(request, slug, id):
                         ]
                     )
 
-                case 127:
-                    list_urls.extend(
-                        [
-                            {
-                                "url": "http://localhost/DVWA/vulnerabilities/open_redirect/source/low.php?redirect=https://www.google.com/",
-                                "attack_detail_en": "No message",
-                            }
-                        ]
-                    )
-
-                case 123:
-                    list_urls.extend(
-                        [
-                            {
-                                "url": "http://testphp.vulnweb.com/login.php",
-                                "attack_detail_en": "No message",
-                            }
-                        ]
-                    )
-
                 case 18:
                     list_urls.extend(
                         [
@@ -152,33 +132,31 @@ def detail_target(request, slug, id):
                         ]
                     )
 
-                # LFI
-                # {
-                #             "url": "http://testphp.vulnweb.com/showimage.php?file=%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fproc%2fversion",
-                #             "attack_detail_en": "No message",
-                #         },
-                #         {
-                #             "url": "http://testphp.vulnweb.com/showimage.php?file=%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fproc%2fversion&size=160",
-                #             "attack_detail_en": "No message",
-                #         },
+                case 32:
+                    list_urls.extend(
+                        [
+                            {
+                                "url": "http://testphp.vulnweb.com/showimage.php?file=%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fproc%2fversion",
+                                "attack_detail_en": "No message",
+                            }
+                        ]
+                    )
 
-                # Out-of-date Version (PHP)
-                # {
-                #             "url": "	http://testphp.vulnweb.com/login.php",
-                #             "attack_detail_en": "No message",
-                #         },
-
-                # Out-of-date Version (MySQL)
-                #         {
-                #             "url": "http://testphp.vulnweb.com/userinfo.php",
-                #             "attack_detail_en": "No message",
-                #         },
+                case 64:
+                    list_urls.extend(
+                        [
+                            {
+                                "url": "http://testphp.vulnweb.com/secured/phpinfo.php",
+                                "attack_detail_en": "Found IP: 192.168.0.5, 192.168.0.26",
+                            }
+                        ]
+                    )
 
     vulnerabilities = ScannerMasterVulnerabilityTemplatePreviewSerializer(instance=ScannerMasterVulnerabilityTemplate.objects.filter(id__in=vulnerability_template_ids), many=True).data
     vulnerabilities.sort(key=lambda v: (-v["severity_order"], -float(v["cvss_base_score"])))
     vul_template = ScannerMasterVulnerabilityTemplate.objects.get(id=vul_template_id) if vul_template_id else None
 
-    print(list_urls)
+    print(target.website)
     context = {
         "target": DetailTargetSerializer(instance=target).data,
         "vulnerabilities": vulnerabilities,
