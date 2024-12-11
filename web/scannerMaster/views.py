@@ -156,7 +156,6 @@ def detail_target(request, slug, id):
     vulnerabilities.sort(key=lambda v: (-v["severity_order"], -float(v["cvss_base_score"])))
     vul_template = ScannerMasterVulnerabilityTemplate.objects.get(id=vul_template_id) if vul_template_id else None
 
-    print(target.website)
     context = {
         "target": DetailTargetSerializer(instance=target).data,
         "vulnerabilities": vulnerabilities,

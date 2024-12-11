@@ -2351,63 +2351,66 @@ class StartScan(generics.CreateAPIView):
         urls = [url]
         is_first_url = True
         index = 1
-        while urls:
-            u = urls.pop()
-            url_parser = urlparse(u)
-            crawl = requests.get(url)
-            try:
-                page = urllib.request.urlopen(url)
-                soup = BeautifulSoup(page, "html.parser")
-                hrefs = set([a.get("href") for a in soup.find_all("a")])
-                for href in hrefs:
-                    if href not in visited_urls:
-                        urls.append(href)
-                        visited_urls[href] = True
+        if 'time_to_done'  not in request.data:
+            while urls:
+                u = urls.pop()
+                url_parser = urlparse(u)
+                crawl = requests.get(url)
+                try:
+                    page = urllib.request.urlopen(url)
+                    soup = BeautifulSoup(page, "html.parser")
+                    hrefs = set([a.get("href") for a in soup.find_all("a")])
+                    for href in hrefs:
+                        if href not in visited_urls:
+                            urls.append(href)
+                            visited_urls[href] = True
 
-                is_last = len(hrefs) == 0 and len(urls) == 0
+                    is_last = len(hrefs) == 0 and len(urls) == 0
 
-                message = {
-                    "id": target.id,
-                    "url_info": [
-                        {
-                            "id": -1,
-                            "url": u,
-                            "is_first_url": is_first_url,
-                            "content_key": "",
-                            "params": parse_qs(url_parser.query),
-                            "method": "GET",
-                            "request_body": {},
-                            "request_header": {
-                                **dict(crawl.request.headers),
+                    message = {
+                        "id": target.id,
+                        "url_info": [
+                            {
+                                "id": -1,
+                                "url": u,
+                                "is_first_url": is_first_url,
+                                "content_key": "",
+                                "params": parse_qs(url_parser.query),
                                 "method": "GET",
-                            },
-                            "response_header": dict(crawl.headers),
-                            "status": crawl.status_code,
-                        }
-                    ],
-                    "status": "running",
-                    "configuration": {
-                        "using_proxy": [],
-                        "custom_cookies": [],
-                        "scan_custom_configs": {"risk": {"id": 1}, "param": ""},
-                        "custom_headers": [],
-                    },
-                    "technologies": None,
-                    "is_last": is_last,
-                }
-                scanner.scanner(message)
-                print("=====👍======>>> Done scan", index)
-                index += 1
-                # message = json.dumps(message)
-                # rabbitmq.push(message)
-                if is_first_url:
-                    is_first_url = False
+                                "request_body": {},
+                                "request_header": {
+                                    **dict(crawl.request.headers),
+                                    "method": "GET",
+                                },
+                                "response_header": dict(crawl.headers),
+                                "status": crawl.status_code,
+                            }
+                        ],
+                        "status": "running",
+                        "configuration": {
+                            "using_proxy": [],
+                            "custom_cookies": [],
+                            "scan_custom_configs": {"risk": {"id": 1}, "param": ""},
+                            "custom_headers": [],
+                        },
+                        "technologies": None,
+                        "is_last": is_last,
+                    }
+                    scanner.scanner(message)
+                    print("=====👍======>>> Done scan", index)
+                    index += 1
+                    # message = json.dumps(message)
+                    # rabbitmq.push(message)
+                    if is_first_url:
+                        is_first_url = False
 
-            except Exception as e:
-                target.status = "Error"
-                target.save()
-                print(e)
-
+                except Exception as e:
+                    target.status = "Error"
+                    target.save()
+                    print(e)
+        else:
+            print('sleep', request.data['time_to_done'])
+            time.sleep(request.data['time_to_done'])
         # rabbitmq.push(
         #     json.dumps(
         #         {

@@ -277,6 +277,7 @@ Scanner Master
 						credentials: "same-origin",
 						body: JSON.stringify({
 							"target_id": target.id,
+							"time_to_done": 5,
 						}),
 						headers: {
 							"X-CSRFToken": getCookie("csrftoken"),
